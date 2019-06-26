@@ -19,50 +19,63 @@ form.addEventListener('submit', (e)=>{
 
 })
 
-// Canvas Chart
-let dataPoints = [
-    { label : 'Windows', y: 0},
-    { label : 'MacOS', y: 0},
-    { label : 'Linux', y: 0},
-    { label : 'Other', y: 0},
-]
+//Fetch data
+fetch('http://localhost:3000/poll')
+    .then(res => res.json())
+    .then(data => {
+        const votes = data.votes
+        const totalVotes = votes.length
 
-const chartContainer = document.querySelector('#chartContainer')
+        // Count vote points
+        const voteCounts = votes.reduce((acc, vote) => (acc[vote.os] = (acc[vote.os] || 0) + parseInt(vote.points), acc), {})
 
-if(chartContainer){
-    const chart = new CanvasJS.Chart('chartContainer', {
-        animationEnabled: true,
-        theme: 'theme1',
-        title: {
-            text: 'OS Results'
-        },
-        data: [
-            {
-                type: 'column',
-                dataPoints: dataPoints
-            }
+
+        // Canvas Chart
+        let dataPoints = [
+            { label : 'Windows', y: voteCounts.Windows},
+            { label : 'MacOS', y: voteCounts.MacOS},
+            { label : 'Linux', y: voteCounts.Linux},
+            { label : 'Other', y: voteCounts.Other},
         ]
-    })
-    chart.render()
 
-     // Enable pusher logging - don't include this in production
-    Pusher.logToConsole = true;
+        const chartContainer = document.querySelector('#chartContainer')
 
-    var pusher = new Pusher('9b8f37513a2bdeef3c3b', {
-       cluster: 'ap2',
-       forceTLS: true
-    });
- 
-    var channel = pusher.subscribe('os-poll');
-    channel.bind('os-vote', function(data) {
-        dataPoints = dataPoints.map(x => {
-            if(x.label == data.os){
-                x.y += data.points
-                return x
-            }else{
-                return x
-            }
-        })
-        chart.render()        
+        if(chartContainer){
+            const chart = new CanvasJS.Chart('chartContainer', {
+                animationEnabled: true,
+                theme: 'theme1',
+                title: {
+                    text: `Total Votes : ${totalVotes}`
+                },
+                data: [
+                    {
+                        type: 'column',
+                        dataPoints: dataPoints
+                    }
+                ]
+            })
+            chart.render()
+
+            // Enable pusher logging - don't include this in production
+            Pusher.logToConsole = true;
+
+            var pusher = new Pusher('9b8f37513a2bdeef3c3b', {
+            cluster: 'ap2',
+            forceTLS: true
+            });
+        
+            var channel = pusher.subscribe('os-poll');
+            channel.bind('os-vote', function(data) {
+                dataPoints = dataPoints.map(x => {
+                    if(x.label == data.os){
+                        x.y += data.points
+                        return x
+                    }else{
+                        return x
+                    }
+                })
+                
+                chart.render()        
+            })
+        }
     })
-}
